@@ -1,26 +1,141 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Horror purple palette mapped to theme tokens */
+  --color-horror-bg:        #0d0618;
+  --color-horror-surface:   #1a0a2e;
+  --color-horror-card:      #241040;
+  --color-horror-border:    #4a1f6e;
+  --color-horror-purple:    #7b3f8a;
+  --color-horror-light:     #9b5aaa;
+  --color-horror-glow:      #c084fc;
+  --color-horror-muted:     #7c5fa0;
+  --color-horror-accent:    #8b5cf6;
+  --color-horror-dim:       #3d1f5c;
+
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ── HORROR DARK THEME (default) ── */
+:root {
+  /* Deep haunted purple replacing all whites */
+  --background:         oklch(0.08 0.03 290);   /* #0d0618 deep void */
+  --foreground:         oklch(0.92 0.02 290);   /* near white lavender */
+
+  --card:               oklch(0.13 0.04 290);   /* #1a0a2e dark purple */
+  --card-foreground:    oklch(0.88 0.03 290);
+
+  --popover:            oklch(0.13 0.04 290);
+  --popover-foreground: oklch(0.88 0.03 290);
+
+  --primary:            oklch(0.55 0.22 305);   /* vivid purple #7b3f8a */
+  --primary-foreground: oklch(0.97 0.01 290);
+
+  --secondary:          oklch(0.20 0.06 295);   /* #3d1f5c */
+  --secondary-foreground: oklch(0.88 0.03 290);
+
+  --muted:              oklch(0.18 0.05 292);
+  --muted-foreground:   oklch(0.58 0.08 295);   /* #7c5fa0 */
+
+  --accent:             oklch(0.60 0.24 300);   /* #8b5cf6 */
+  --accent-foreground:  oklch(0.97 0.01 290);
+
+  --destructive:        oklch(0.62 0.22 15);    /* blood red */
+
+  --border:             oklch(0.28 0.10 295);   /* #4a1f6e */
+  --input:              oklch(0.22 0.07 293);
+  --ring:               oklch(0.55 0.22 305);
+
+  --chart-1:            oklch(0.72 0.18 305);
+  --chart-2:            oklch(0.60 0.22 300);
+  --chart-3:            oklch(0.50 0.20 295);
+  --chart-4:            oklch(0.40 0.16 290);
+  --chart-5:            oklch(0.30 0.12 285);
+
+  --radius: 0.625rem;
+
+  --sidebar:            oklch(0.11 0.04 290);
+  --sidebar-foreground: oklch(0.88 0.03 290);
+  --sidebar-primary:    oklch(0.55 0.22 305);
+  --sidebar-primary-foreground: oklch(0.97 0.01 290);
+  --sidebar-accent:     oklch(0.20 0.06 295);
+  --sidebar-accent-foreground: oklch(0.88 0.03 290);
+  --sidebar-border:     oklch(0.28 0.10 295);
+  --sidebar-ring:       oklch(0.55 0.22 305);
+}
+
+/* Light variant keeps the horror — just slightly lifted */
+.light {
+  --background:         oklch(0.12 0.04 290);
+  --foreground:         oklch(0.93 0.02 290);
+  --card:               oklch(0.16 0.05 290);
+  --card-foreground:    oklch(0.90 0.03 290);
+  --border:             oklch(0.32 0.10 295);
+  --muted:              oklch(0.22 0.06 292);
+  --muted-foreground:   oklch(0.62 0.08 295);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans, 'system-ui', sans-serif);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Global horror cursor */
+* { cursor: default; }
+a, button, [role="button"] { cursor: pointer; }
+
+html, body, #__next {
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden; /* only block horizontal scroll */
 }
