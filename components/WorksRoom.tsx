@@ -13,69 +13,76 @@ interface Project {
     accentColor: string
     description: string
     image?: string
+    link?: string
 }
 
 const PROJECTS: Project[] = [
     {
+        title: 'CID Moosa AI',
+        subtitle: 'AI Detective Chat',
+        tech: 'Next.js · FastAPI',
+        year: '2024',
+        color: '#1a1005',
+        accentColor: '#e69900',
+        description: 'An AI chat application that solves real-world cases using characters from the CID Moosa universe as detectives.',
+        image: '/cidmoosa.png',
+        link: 'https://cidmoosa.vercel.app'
+    },
+    {
+        title: 'Kerala Win',
+        subtitle: 'Lottery Result Parser',
+        tech: 'Next.js · FastAPI',
+        year: '2024',
+        color: '#051a0f',
+        accentColor: '#00cc66',
+        description: 'Kerala lottery result application that parses official documents directly from the government result pages.',
+        image: '/keralawin.png',
+        link: 'https://kerala-win.vercel.app'
+    },
+    {
+        title: 'Gadget Store',
+        subtitle: 'E-commerce & Admin',
+        tech: 'Next.js · FastAPI · PostgreSQL',
+        year: '2024',
+        color: '#0a0c1a',
+        accentColor: '#3366cc',
+        description: 'Complete e-commerce website featuring a dedicated admin panel for inventory and sales management.',
+        image: '/gadgetstore.png',
+        link: 'https://jav-mu.vercel.app/'
+    },
+    {
+        title: 'Quizzer App',
+        subtitle: 'Multiplayer Trivia',
+        tech: 'Next.js · FastAPI · WebSockets',
+        year: '2024',
+        color: '#1a0515',
+        accentColor: '#cc33aa',
+        description: 'Real-time multiplayer quiz application supporting live competitive trivia sessions across devices.',
+        image: '/quizer.png',
+        link: 'https://quizzer-alpha-five.vercel.app/'
+    },
+    {
+        title: 'Balance Checker',
+        subtitle: 'Bank Statement Analysis',
+        tech: 'Next.js · FastAPI',
+        year: '2024',
+        color: '#05101a',
+        accentColor: '#3399cc',
+        description: 'Financial analysis tool that processes bank statements to check and visualize your financial balance.',
+        image: '/balancechecker.png',
+        link: 'https://my-balance-five.vercel.app/'
+    },
+    {
         title: 'Haunted Manor',
-        subtitle: 'Immersive 3D Environment',
-        tech: 'Three.js · WebGL · React',
+        subtitle: 'Immersive 3D Portfolio',
+        tech: 'Three.js · WebGL · Next.js',
         year: '2024',
         color: '#1a0808',
         accentColor: '#cc3333',
-        description: 'A procedurally generated gothic mansion rendered entirely in the browser with real-time lighting and atmospheric effects.',
-        image: '/api/placeholder/800/600'
-    },
-    {
-        title: 'Obsidian Shop',
-        subtitle: 'Next.js E-commerce',
-        tech: 'Next.js · Stripe · Prisma',
-        year: '2024',
-        color: '#080c1a',
-        accentColor: '#3366cc',
-        description: 'A dark luxury e-commerce platform with fluid animations, real-time inventory, and seamless checkout.',
-        image: '/api/placeholder/800/601'
-    },
-    {
-        title: 'Nebula Arch',
-        subtitle: 'Cloud Infrastructure',
-        tech: 'AWS · Terraform · Docker',
-        year: '2023',
-        color: '#0a0818',
-        accentColor: '#8844cc',
-        description: 'Scalable cloud architecture serving millions of requests per day with 99.99% uptime and automated failover.',
-        image: '/api/placeholder/800/602'
-    },
-    {
-        title: 'Oracle Mind',
-        subtitle: 'AI Conversational Agent',
-        tech: 'Python · LangChain · FastAPI',
-        year: '2023',
-        color: '#081208',
-        accentColor: '#44aa44',
-        description: 'A context-aware AI assistant that learns from interactions and adapts its personality to each user.',
-        image: '/api/placeholder/800/603'
-    },
-    {
-        title: 'Crimson Type',
-        subtitle: 'Creative Coding Portfolio',
-        tech: 'GLSL · WebGL · Canvas',
-        year: '2023',
-        color: '#120808',
-        accentColor: '#cc6622',
-        description: 'A generative art system that creates unique typographic compositions using shader-based algorithms.',
-        image: '/api/placeholder/800/604'
-    },
-    {
-        title: 'Void Protocol',
-        subtitle: 'Real-time Multiplayer',
-        tech: 'Socket.io · Node.js · Redis',
-        year: '2022',
-        color: '#080812',
-        accentColor: '#2288cc',
-        description: 'A real-time multiplayer experience supporting thousands of simultaneous players with sub-20ms latency.',
-        image: '/api/placeholder/800/605'
-    },
+        description: 'This very website. A procedurally generated gothic mansion rendered entirely in the browser with real-time lighting and atmospheric effects.',
+        image: '/api/placeholder/800/600',
+        link: 'https://github.com/AlenJames/alenjames'
+    }
 ]
 
 // ── TEXTURE GENERATORS ───────────────────────────────────────────────────────
@@ -214,103 +221,123 @@ function makeProjectCanvas(proj: Project, textureScale: number, w = 1024, h = 76
     const texH = h * textureScale
     const c = document.createElement('canvas'); c.width = texW; c.height = texH
     const ctx = c.getContext('2d')!
+    const t = new THREE.CanvasTexture(c)
+    t.minFilter = THREE.LinearFilter
 
-    // Rich dark background
-    const bg = ctx.createLinearGradient(0, 0, w, h)
-    bg.addColorStop(0, proj.color)
-    bg.addColorStop(0.5, shiftColor(proj.color || '#0a0808', 1.6))
-    bg.addColorStop(1, proj.color)
-    ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h)
+    // Function to draw everything onto the canvas
+    const draw = (img?: HTMLImageElement) => {
+        ctx.clearRect(0, 0, texW, texH)
 
-    // Draw image if provided
+        // Rich dark background
+        const bg = ctx.createLinearGradient(0, 0, texW, texH)
+        bg.addColorStop(0, proj.color)
+        bg.addColorStop(0.5, shiftColor(proj.color || '#0a0808', 1.6))
+        bg.addColorStop(1, proj.color)
+        ctx.fillStyle = bg; ctx.fillRect(0, 0, texW, texH)
+
+        if (img) {
+            ctx.globalAlpha = 0.6
+            // Scale and center image to cover height while maintaining aspect ratio
+            const scale = Math.max(texW / img.width, texH / img.height)
+            const iw = img.width * scale, ih = img.height * scale
+            // Draw centered
+            ctx.drawImage(img, (texW - iw) / 2, (texH - ih) / 2, iw, ih)
+            ctx.globalAlpha = 1.0
+        }
+
+        // Overlay Grid pattern
+        ctx.strokeStyle = `${proj.accentColor}18`; ctx.lineWidth = 1 * textureScale
+        for (let x = 0; x < texW; x += 48 * textureScale) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, texH); ctx.stroke() }
+        for (let y = 0; y < texH; y += 48 * textureScale) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(texW, y); ctx.stroke() }
+
+        // Central radial glow
+        const rg = ctx.createRadialGradient(texW / 2, texH / 2, 0, texW / 2, texH / 2, texW * 0.65)
+        rg.addColorStop(0, `${proj.accentColor}22`); rg.addColorStop(1, 'rgba(0,0,0,0)')
+        ctx.fillStyle = rg; ctx.fillRect(0, 0, texW, texH)
+
+        // Vignette (behind text)
+        const vig = ctx.createRadialGradient(texW / 2, texH / 2, texH * 0.2, texW / 2, texH / 2, texH * 0.9)
+        vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(0,0,0,0.85)')
+        ctx.fillStyle = vig; ctx.fillRect(0, 0, texW, texH)
+
+        // Borders
+        ctx.strokeStyle = `${proj.accentColor}88`; ctx.lineWidth = 3 * textureScale
+        ctx.beginPath(); ctx.moveTo(80 * textureScale, 55 * textureScale); ctx.lineTo(texW - 80 * textureScale, 55 * textureScale); ctx.stroke()
+        ctx.beginPath(); ctx.moveTo(80 * textureScale, texH - 55 * textureScale); ctx.lineTo(texW - 80 * textureScale, texH - 55 * textureScale); ctx.stroke()
+
+        // Year badge
+        const ybW = 100 * textureScale, ybH = 28 * textureScale
+        ctx.fillStyle = `${proj.accentColor}22`
+        ctx.fillRect(texW / 2 - ybW / 2, 20 * textureScale, ybW, ybH)
+        ctx.strokeStyle = `${proj.accentColor}55`; ctx.lineWidth = 1; ctx.strokeRect(texW / 2 - ybW / 2, 20 * textureScale, ybW, ybH)
+        ctx.font = `500 ${18 * textureScale}px monospace`; ctx.fillStyle = `${proj.accentColor}cc`
+        ctx.textAlign = 'center'; ctx.fillText(proj.year, texW / 2, 40 * textureScale)
+
+        // Text Styles & Sizes
+        const tsTitle = (w > 700 ? 88 * textureScale : 68 * textureScale)
+        const tsSubtitle = 22 * textureScale
+        const tsDesc = 18 * textureScale
+        const tsTech = 16 * textureScale
+
+        // Decorate Text Area
+        ctx.fillStyle = 'rgba(0,0,0,0.65)'
+        ctx.fillRect(0, texH / 2 - 100 * textureScale, texW, 180 * textureScale)
+
+        // Subtitle
+        ctx.font = `500 ${tsSubtitle}px monospace`; ctx.fillStyle = `${proj.accentColor}aa`
+        ctx.fillText(proj.subtitle.toUpperCase(), texW / 2, 120 * textureScale)
+
+        // Title
+        ctx.font = `bold ${tsTitle}px Georgia, serif`
+        ctx.fillStyle = '#ffffff'
+        ctx.shadowColor = proj.accentColor; ctx.shadowBlur = 40 * textureScale
+        ctx.fillText(proj.title, texW / 2, texH / 2 - 10 * textureScale)
+        ctx.shadowBlur = 0
+
+        // Divider
+        ctx.strokeStyle = `${proj.accentColor}66`; ctx.lineWidth = 1 * textureScale
+        ctx.beginPath(); ctx.moveTo(texW / 2 - 120 * textureScale, texH / 2 + 40 * textureScale); ctx.lineTo(texW / 2 + 120 * textureScale, texH / 2 + 40 * textureScale); ctx.stroke()
+
+        // Description
+        ctx.font = `${tsDesc}px Georgia, serif`; ctx.fillStyle = 'rgba(230,220,200,0.95)'
+        const words = proj.description.split(' ')
+        let line = '', lines: string[] = [], y2 = texH / 2 + 80 * textureScale
+        words.forEach(word => {
+            const test = line + word + ' '
+            if (ctx.measureText(test).width > texW * 0.7 && line) { lines.push(line.trim()); line = word + ' ' }
+            else line = test
+        })
+        if (line.trim()) lines.push(line.trim())
+        lines.forEach((l, i) => ctx.fillText(l, texW / 2, y2 + i * (30 * textureScale)))
+
+        // Tech stack
+        ctx.font = `500 ${tsTech}px monospace`; ctx.fillStyle = `${proj.accentColor}`
+        ctx.fillText(proj.tech, texW / 2, texH - 85 * textureScale)
+
+        // Mark texture for update in ThreeJS
+        t.needsUpdate = true
+    }
+
     if (proj.image) {
         const img = new Image()
+        img.crossOrigin = 'anonymous'
+        let loaded = false
+        img.onload = () => {
+            loaded = true
+            draw(img)
+        }
+        img.onerror = () => {
+            draw() // Fallback to no image if loading fails
+        }
         img.src = proj.image
-        // Note: Since this is often async in real use, we'd ideally preload. 
-        // But for this demo, we'll draw it if it's already cached or provide the code structure.
-        ctx.globalAlpha = 0.4 // Blend with background color
-        ctx.drawImage(img, 0, 0, w, h)
-        ctx.globalAlpha = 1.0
+
+        // Timeout to draw anyway if image takes too long, just in case
+        setTimeout(() => { if (!loaded) draw() }, 50)
+    } else {
+        draw()
     }
 
-    // Grid pattern
-    ctx.strokeStyle = `${proj.accentColor}18`; ctx.lineWidth = 1
-    for (let x = 0; x < w; x += 48) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke() }
-    for (let y = 0; y < h; y += 48) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke() }
-
-    // Central radial glow
-    const rg = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w * 0.65)
-    rg.addColorStop(0, `${proj.accentColor}22`); rg.addColorStop(1, 'rgba(0,0,0,0)')
-    ctx.fillStyle = rg; ctx.fillRect(0, 0, w, h)
-
-    // Decorative corner ornaments
-    const corners = [[30, 30], [w - 30, 30], [30, h - 30], [w - 30, h - 30]]
-    corners.forEach(([cx2, cy2]) => {
-        ctx.strokeStyle = `${proj.accentColor}66`; ctx.lineWidth = 2
-        ctx.strokeRect(cx2 - 18, cy2 - 18, 36, 36)
-        ctx.strokeStyle = `${proj.accentColor}33`; ctx.lineWidth = 1
-        ctx.strokeRect(cx2 - 28, cy2 - 28, 56, 56)
-        ctx.fillStyle = proj.accentColor + 'aa'
-        ctx.save(); ctx.translate(cx2, cy2); ctx.rotate(Math.PI / 4)
-        ctx.fillRect(-5, -5, 10, 10); ctx.restore()
-    })
-
-    // Top border line
-    ctx.strokeStyle = `${proj.accentColor}88`; ctx.lineWidth = 3
-    ctx.beginPath(); ctx.moveTo(80, 55); ctx.lineTo(w - 80, 55); ctx.stroke()
-    // Bottom border line
-    ctx.beginPath(); ctx.moveTo(80, h - 55); ctx.lineTo(w - 80, h - 55); ctx.stroke()
-
-    // Year badge
-    ctx.fillStyle = `${proj.accentColor}22`
-    ctx.fillRect(w / 2 - 50, 20, 100, 28)
-    ctx.strokeStyle = `${proj.accentColor}55`; ctx.lineWidth = 1; ctx.strokeRect(w / 2 - 50, 20, 100, 28)
-    ctx.font = '500 18px monospace'; ctx.fillStyle = `${proj.accentColor}cc`
-    ctx.textAlign = 'center'; ctx.fillText(proj.year, w / 2, 39)
-
-    // Subtitle label
-    ctx.font = '500 22px monospace'; ctx.fillStyle = `${proj.accentColor}99`
-    ctx.textAlign = 'center'; ctx.fillText(proj.subtitle.toUpperCase(), w / 2, 110)
-
-    // Main title
-    ctx.font = `bold ${w > 700 ? 88 : 68}px Georgia, serif`
-    ctx.fillStyle = '#ffffff'
-    ctx.shadowColor = proj.accentColor; ctx.shadowBlur = 40
-    ctx.textAlign = 'center'; ctx.fillText(proj.title, w / 2, h / 2 - 20)
-    ctx.shadowBlur = 0
-
-    // Divider
-    ctx.strokeStyle = `${proj.accentColor}66`; ctx.lineWidth = 1
-    ctx.beginPath(); ctx.moveTo(w / 2 - 120, h / 2 + 28); ctx.lineTo(w / 2 + 120, h / 2 + 28); ctx.stroke()
-
-    // Description
-    ctx.font = '18px Georgia, serif'; ctx.fillStyle = 'rgba(220,200,180,0.72)'
-    ctx.shadowBlur = 0; ctx.textAlign = 'center'
-    const words = proj.description.split(' ')
-    let line = '', lines: string[] = [], y2 = h / 2 + 62
-    words.forEach(word => {
-        const test = line + word + ' '
-        if (ctx.measureText(test).width > w * 0.7 && line) { lines.push(line.trim()); line = word + ' ' }
-        else line = test
-    })
-    if (line.trim()) lines.push(line.trim())
-    lines.forEach((l, i) => ctx.fillText(l, w / 2, y2 + i * 30))
-
-    // Tech stack
-    ctx.font = '500 16px monospace'; ctx.fillStyle = `${proj.accentColor}88`
-    ctx.fillText(proj.tech, w / 2, h - 80)
-
-    // Scan lines for CRT feel
-    for (let y = 0; y < h; y += 4) {
-        ctx.fillStyle = 'rgba(0,0,0,0.08)'; ctx.fillRect(0, y, w, 2)
-    }
-
-    // Vignette
-    const vig = ctx.createRadialGradient(w / 2, h / 2, h * 0.2, w / 2, h / 2, h * 0.9)
-    vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(0,0,0,0.7)')
-    ctx.fillStyle = vig; ctx.fillRect(0, 0, w, h)
-
-    return new THREE.CanvasTexture(c)
+    return t
 }
 
 function makeNameplate(proj: Project): THREE.CanvasTexture {
@@ -926,6 +953,17 @@ export default function WorksRoom({ isActive = true }: { isActive?: boolean }) {
                         {proj.description}
                     </p>
                     <p className="text-[10px] font-mono" style={{ color: `${proj.accentColor}55` }}>{proj.tech}</p>
+
+                    {proj.link && (
+                        <div className="mt-5 pointer-events-auto">
+                            <a href={proj.link} target="_blank" rel="noopener noreferrer"
+                                className="inline-block px-4 py-2 font-mono text-[9px] uppercase tracking-widest transition-all duration-300 hover:bg-white/5"
+                                style={{ border: `1px solid ${proj.accentColor}44`, color: proj.accentColor }}>
+                                [ VIEW LIVE APP ]
+                            </a>
+                        </div>
+                    )}
+
                     <div className="h-px mt-4" style={{ background: `linear-gradient(to right, ${proj.accentColor}44, transparent)` }} />
                 </div>
             </div>

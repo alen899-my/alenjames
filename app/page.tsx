@@ -14,9 +14,9 @@ const InsideHouse = dynamic(() => import('@/components/InsideHouse'), {
   loading: () => <LoadingScreen text="Loading Interior..." />,
 })
 
-const GenericRoom = dynamic(() => import('@/components/GenericRoom'), {
+const ExperienceRoom = dynamic(() => import('@/components/ExperienceRoom'), {
   ssr: false,
-  loading: () => <LoadingScreen text="Loading Room..." />,
+  loading: () => <LoadingScreen text="Loading Experience..." />,
 })
 
 const EducationRoom = dynamic(() => import('@/components/EducationRoom'), {
@@ -153,7 +153,7 @@ export default function Home() {
         ) : (
           <section className="absolute inset-0 w-full h-full pointer-events-auto">
             {currentRoom === 'education' && <EducationRoom isActive={true} />}
-            {currentRoom === 'experience' && <GenericRoom title="Experience" color="#ee9944" />}
+            {currentRoom === 'experience' && <ExperienceRoom isActive={true} />}
             {currentRoom === 'skills' && <SkillsRoom isActive={true} />}
             {currentRoom === 'works' && <WorksRoom isActive={true} />}
           </section>
