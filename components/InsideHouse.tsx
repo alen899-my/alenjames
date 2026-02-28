@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import * as THREE from 'three'
+import { usePerformance } from '@/lib/usePerformance'
 
 type PanelType = 'profile' | 'education' | 'skills' | 'experience' | 'works' | null
 
@@ -31,6 +32,7 @@ export default function InsideHouse({ isActive = true }: { isActive?: boolean })
     const mountRef = useRef<HTMLDivElement>(null)
     const [activePanel, setActivePanel] = useState<PanelType>(null)
     const [panelVisible, setPanelVisible] = useState(false)
+    const perf = usePerformance()
 
     const openPanel = useCallback((type: PanelType) => {
         setActivePanel(type)
@@ -50,11 +52,14 @@ export default function InsideHouse({ isActive = true }: { isActive?: boolean })
         const isMobile = W < 768
 
         // ── RENDERER ─────────────────────────────────────────────────────────────
-        const renderer = new THREE.WebGLRenderer({ antialias: true })
+        const renderer = new THREE.WebGLRenderer({
+            antialias: perf.tier === 'high',
+            powerPreference: 'high-performance'
+        })
         renderer.setSize(W, H)
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-        renderer.shadowMap.enabled = true
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap
+        renderer.setPixelRatio(perf.pixelRatio)
+        renderer.shadowMap.enabled = perf.shadows
+        renderer.shadowMap.type = perf.tier === 'high' ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap
         renderer.toneMapping = THREE.ACESFilmicToneMapping
         renderer.toneMappingExposure = 1.25
         mount.appendChild(renderer.domElement)
@@ -101,7 +106,8 @@ export default function InsideHouse({ isActive = true }: { isActive?: boolean })
         // ── TEXTURE FACTORIES ─────────────────────────────────────────────────────
 
         function makeWallTex() {
-            const c = document.createElement('canvas'); c.width = 1024; c.height = 1024
+            const texSize = 1024 * perf.textureScale
+            const c = document.createElement('canvas'); c.width = texSize; c.height = texSize
             const ctx = c.getContext('2d')!
             ctx.fillStyle = '#070410'; ctx.fillRect(0, 0, 1024, 1024)
             for (let i = 0; i < 14000; i++) {
@@ -146,7 +152,8 @@ export default function InsideHouse({ isActive = true }: { isActive?: boolean })
         }
 
         function makeFloorTex() {
-            const c = document.createElement('canvas'); c.width = 1024; c.height = 1024
+            const texSize = 1024 * perf.textureScale
+            const c = document.createElement('canvas'); c.width = texSize; c.height = texSize
             const ctx = c.getContext('2d')!
             ctx.fillStyle = '#060301'; ctx.fillRect(0, 0, 1024, 1024)
             const pw = 120
@@ -187,7 +194,9 @@ export default function InsideHouse({ isActive = true }: { isActive?: boolean })
         }
 
         function makeDoorTex(hue: string) {
-            const c = document.createElement('canvas'); c.width = 512; c.height = 1024
+            const texW = 512 * perf.textureScale
+            const texH = 1024 * perf.textureScale
+            const c = document.createElement('canvas'); c.width = texW; c.height = texH
             const ctx = c.getContext('2d')!
             const g = ctx.createLinearGradient(0, 0, 512, 0)
             g.addColorStop(0, '#09060301'); g.addColorStop(0.45, hue); g.addColorStop(1, '#09060301')
@@ -466,7 +475,9 @@ export default function InsideHouse({ isActive = true }: { isActive?: boolean })
 
                 // Glow light at door
                 const gl = new THREE.PointLight(new THREE.Color(color), 20, 7, 2)
-                gl.position.set(wx + 1.2, DH / 2, doorCz); scene.add(gl)
+                gl.position.set(wx + 1.2, DH / 2, doorCz)
+                gl.castShadow = perf.tier === 'high' // Only expensive lights on high tier
+                scene.add(gl)
 
             } else if (wall === 'right') {
                 const wx = RX
@@ -743,7 +754,9 @@ export default function InsideHouse({ isActive = true }: { isActive?: boolean })
 
         const chanLight = new THREE.PointLight(0xffaa44, 78, 34, 1.7)
         chanLight.position.set(CX, RH - 1.28, CZC)
-        chanLight.castShadow = true; chanLight.shadow.mapSize.set(1024, 1024); chanLight.shadow.bias = -0.002
+        chanLight.castShadow = perf.shadows;
+        chanLight.shadow.mapSize.set(perf.shadowMapSize, perf.shadowMapSize);
+        chanLight.shadow.bias = -0.002
         scene.add(chanLight)
 
         const fillLight = new THREE.DirectionalLight(0x152298, 2.8)
@@ -756,7 +769,8 @@ export default function InsideHouse({ isActive = true }: { isActive?: boolean })
         const pSpot = new THREE.SpotLight(0xffee99, 115, 10, Math.PI / 6, 0.4, 1.5)
         pSpot.position.set(LX + 2.2, STOPY + PH / 2 + 2.2, SZ + 0.9)
         pSpot.target.position.set(LX + 0.14, STOPY + PH / 2, SZ)
-        pSpot.castShadow = true; pSpot.shadow.mapSize.set(512, 512)
+        pSpot.castShadow = perf.tier !== 'low';
+        pSpot.shadow.mapSize.set(perf.shadowMapSize / 2, perf.shadowMapSize / 2)
         scene.add(pSpot); scene.add(pSpot.target)
 
         const candleLight = new THREE.PointLight(0xff6600, 26, 5, 1.9)
@@ -775,7 +789,7 @@ export default function InsideHouse({ isActive = true }: { isActive?: boolean })
         eerieGreen.position.set(LX + 1.8, 2.0, -2.5); scene.add(eerieGreen)
 
         // ── PARTICLES ────────────────────────────────────────────────────────────
-        const PC = isMobile ? 120 : 280
+        const PC = Math.floor((isMobile ? 120 : 280) * perf.particlesScale)
         const pGeo = new THREE.BufferGeometry()
         const pArr = new Float32Array(PC * 3)
         for (let i = 0; i < PC; i++) {

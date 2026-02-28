@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import * as THREE from 'three'
+import { usePerformance } from '@/lib/usePerformance'
 
 interface Project {
     title: string
@@ -79,8 +80,9 @@ const PROJECTS: Project[] = [
 
 // ── TEXTURE GENERATORS ───────────────────────────────────────────────────────
 
-function makeWallTex(seed = 0) {
-    const c = document.createElement('canvas'); c.width = 1024; c.height = 1024
+function makeWallTex(seed = 0, textureScale: number) {
+    const texSize = 1024 * textureScale
+    const c = document.createElement('canvas'); c.width = texSize; c.height = texSize
     const ctx = c.getContext('2d')!
     // Dark plaster base
     ctx.fillStyle = `hsl(${260 + seed * 20},10%,5%)`; ctx.fillRect(0, 0, 1024, 1024)
@@ -120,8 +122,9 @@ function makeWallTex(seed = 0) {
     return { map, bumpTex }
 }
 
-function makeFloorTex() {
-    const c = document.createElement('canvas'); c.width = 1024; c.height = 1024
+function makeFloorTex(textureScale: number) {
+    const texSize = 1024 * textureScale
+    const c = document.createElement('canvas'); c.width = texSize; c.height = texSize
     const ctx = c.getContext('2d')!
     ctx.fillStyle = '#050302'; ctx.fillRect(0, 0, 1024, 1024)
     // Parquet planks
@@ -206,8 +209,10 @@ function shiftColor(hex: string, factor: number): string {
     return `rgb(${Math.min(255, ~~(r * factor))},${Math.min(255, ~~(g2 * factor))},${Math.min(255, ~~(b * factor))})`
 }
 
-function makeProjectCanvas(proj: Project, w = 1024, h = 768): THREE.CanvasTexture {
-    const c = document.createElement('canvas'); c.width = w; c.height = h
+function makeProjectCanvas(proj: Project, textureScale: number, w = 1024, h = 768): THREE.CanvasTexture {
+    const texW = w * textureScale
+    const texH = h * textureScale
+    const c = document.createElement('canvas'); c.width = texW; c.height = texH
     const ctx = c.getContext('2d')!
 
     // Rich dark background
@@ -332,6 +337,7 @@ export default function WorksRoom({ isActive = true }: { isActive?: boolean }) {
     const [currentIndex, setCurrentIndex] = useState(0)
     const [hovered, setHovered] = useState(false)
     const isActiveRef = useRef(isActive)
+    const perf = usePerformance()
     useEffect(() => { isActiveRef.current = isActive }, [isActive])
 
     const goNext = useCallback(() => setCurrentIndex(i => (i + 1) % PROJECTS.length), [])
@@ -344,11 +350,14 @@ export default function WorksRoom({ isActive = true }: { isActive?: boolean }) {
         let W = mount.clientWidth, H = mount.clientHeight
 
         // ── RENDERER ────────────────────────────────────────────────────────────
-        const renderer = new THREE.WebGLRenderer({ antialias: true })
+        const renderer = new THREE.WebGLRenderer({
+            antialias: perf.tier === 'high',
+            powerPreference: 'high-performance'
+        })
         renderer.setSize(W, H)
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-        renderer.shadowMap.enabled = true
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap
+        renderer.setPixelRatio(perf.pixelRatio)
+        renderer.shadowMap.enabled = perf.shadows
+        renderer.shadowMap.type = perf.tier === 'high' ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap
         renderer.toneMapping = THREE.ACESFilmicToneMapping
         renderer.toneMappingExposure = 1.4
         mount.appendChild(renderer.domElement)
@@ -367,13 +376,13 @@ export default function WorksRoom({ isActive = true }: { isActive?: boolean }) {
         const HW = RW / 2, HD = RD / 2
 
         // ── MATERIALS ───────────────────────────────────────────────────────────
-        const wallT = makeWallTex(0); wallT.map.repeat.set(4, 2); wallT.bumpTex.repeat.set(4, 2)
+        const wallT = makeWallTex(0, perf.textureScale); wallT.map.repeat.set(4, 2); wallT.bumpTex.repeat.set(4, 2)
         const wallMat = new THREE.MeshStandardMaterial({ map: wallT.map, bumpMap: wallT.bumpTex, bumpScale: 0.08, roughness: 0.96, color: 0xaaaacc })
 
-        const wallT2 = makeWallTex(1); wallT2.map.repeat.set(2, 2); wallT2.bumpTex.repeat.set(2, 2)
+        const wallT2 = makeWallTex(1, perf.textureScale); wallT2.map.repeat.set(2, 2); wallT2.bumpTex.repeat.set(2, 2)
         const sideWallMat = new THREE.MeshStandardMaterial({ map: wallT2.map, bumpMap: wallT2.bumpTex, bumpScale: 0.08, roughness: 0.96, color: 0xaaaacc })
 
-        const floorTex = makeFloorTex(); floorTex.repeat.set(3, 3)
+        const floorTex = makeFloorTex(perf.textureScale); floorTex.repeat.set(3, 3)
         const floorMat = new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.85, metalness: 0.06, color: 0xffffff })
 
         const ceilTex = makeCeilingTex(); ceilTex.repeat.set(3, 3)
@@ -576,7 +585,7 @@ export default function WorksRoom({ isActive = true }: { isActive?: boolean }) {
             matBoard.position.z = FD / 2 - 0.01; group.add(matBoard)
 
             // Painting surface
-            const paintTex = makeProjectCanvas(proj)
+            const paintTex = makeProjectCanvas(proj, perf.textureScale)
             const paintMesh = new THREE.Mesh(
                 new THREE.PlaneGeometry(IW, IH),
                 new THREE.MeshStandardMaterial({ map: paintTex, roughness: 0.7, metalness: 0.0 })
@@ -607,7 +616,9 @@ export default function WorksRoom({ isActive = true }: { isActive?: boolean }) {
             const lightPos = new THREE.Vector3(x, WALL_Y + 2.5, z).addScaledVector(normalDir, 3.5)
             spot.position.copy(lightPos)
             spot.target.position.set(x, WALL_Y, z)
-            spot.castShadow = true; spot.shadow.mapSize.set(512, 512); spot.shadow.bias = -0.002
+            spot.castShadow = perf.tier === 'high';
+            spot.shadow.mapSize.set(perf.shadowMapSize / 2, perf.shadowMapSize / 2);
+            spot.shadow.bias = -0.002
             scene.add(spot); scene.add(spot.target)
             spotLights.push(spot)
 
@@ -638,7 +649,10 @@ export default function WorksRoom({ isActive = true }: { isActive?: boolean }) {
         fireMesh.position.set(0, 0.9, -HD + 0.4); scene.add(fireMesh)
 
         const fireLight = new THREE.PointLight(0xff6600, 60, 10, 1.6)
-        fireLight.position.set(0, 1.5, -HD + 1.5); fireLight.castShadow = true; scene.add(fireLight)
+        fireLight.position.set(0, 1.5, -HD + 1.5);
+        fireLight.castShadow = perf.tier !== 'low';
+        fireLight.shadow.mapSize.set(perf.shadowMapSize / 2, perf.shadowMapSize / 2);
+        scene.add(fireLight)
 
         // Fireplace andirons
         const andironMat = new THREE.MeshStandardMaterial({ color: 0x1e1e28, metalness: 0.88, roughness: 0.35 })
@@ -725,7 +739,9 @@ export default function WorksRoom({ isActive = true }: { isActive?: boolean }) {
         // Main chandelier light
         const chanLight = new THREE.PointLight(0xffaa44, 65, 28, 1.7)
         chanLight.position.set(0, RH - 1.0, 0)
-        chanLight.castShadow = true; chanLight.shadow.mapSize.set(1024, 1024); chanLight.shadow.bias = -0.002
+        chanLight.castShadow = perf.shadows;
+        chanLight.shadow.mapSize.set(perf.shadowMapSize, perf.shadowMapSize);
+        chanLight.shadow.bias = -0.002
         scene.add(chanLight)
 
         // Cool moonlight from entrance side
@@ -738,7 +754,7 @@ export default function WorksRoom({ isActive = true }: { isActive?: boolean }) {
         deepAtmos.position.set(0, 1.5, 0); scene.add(deepAtmos)
 
         // ── PARTICLES (dust motes) ─────────────────────────────────────────────────
-        const PC = 200
+        const PC = Math.floor(200 * perf.particlesScale)
         const pGeo = new THREE.BufferGeometry()
         const pArr = new Float32Array(PC * 3)
         for (let i = 0; i < PC; i++) {

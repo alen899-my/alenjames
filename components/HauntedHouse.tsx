@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
+import { usePerformance } from '@/lib/usePerformance'
 
 export default function HauntedHouse({ isActive = true }: { isActive?: boolean }) {
   const isActiveRef = useRef(isActive)
@@ -11,6 +12,7 @@ export default function HauntedHouse({ isActive = true }: { isActive?: boolean }
   const isDoorOpenRef = useRef(false)
   const animatingRef = useRef(false)
   const doorPivotRef = useRef<THREE.Group | null>(null)
+  const perf = usePerformance()
 
   const [doorOpen, setDoorOpen] = useState(false)
 
@@ -24,11 +26,15 @@ export default function HauntedHouse({ isActive = true }: { isActive?: boolean }
     let isMobile = W < 768
 
     // ── RENDERER ──────────────────────────────────────────────────────────
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false })
+    const renderer = new THREE.WebGLRenderer({
+      antialias: perf.tier === 'high', // Only antialias on high-tier
+      alpha: false,
+      powerPreference: 'high-performance'
+    })
     renderer.setSize(W, H)
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-    renderer.shadowMap.enabled = true
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap
+    renderer.setPixelRatio(perf.pixelRatio)
+    renderer.shadowMap.enabled = perf.shadows
+    renderer.shadowMap.type = perf.tier === 'high' ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap
     renderer.toneMapping = THREE.ACESFilmicToneMapping
     renderer.toneMappingExposure = 0.85
     mount.appendChild(renderer.domElement)
@@ -49,8 +55,9 @@ export default function HauntedHouse({ isActive = true }: { isActive?: boolean }
 
     // ── TEXTURE GENERATORS (ALBEDO + BUMP) ──────────────────────────────
     function makeBrickTextures() {
-      const c = document.createElement('canvas'); c.width = c.height = 1024
-      const b = document.createElement('canvas'); b.width = b.height = 1024
+      const texSize = 1024 * perf.textureScale
+      const c = document.createElement('canvas'); c.width = c.height = texSize
+      const b = document.createElement('canvas'); b.width = b.height = texSize
       const ctx = c.getContext('2d')!; const btx = b.getContext('2d')!
 
       ctx.fillStyle = '#110822'; ctx.fillRect(0, 0, 1024, 1024)
@@ -100,8 +107,10 @@ export default function HauntedHouse({ isActive = true }: { isActive?: boolean }
     }
 
     function makeWoodTextures() {
-      const c = document.createElement('canvas'); c.width = 512; c.height = 1024
-      const b = document.createElement('canvas'); b.width = 512; b.height = 1024
+      const texW = 512 * perf.textureScale
+      const texH = 1024 * perf.textureScale
+      const c = document.createElement('canvas'); c.width = texW; c.height = texH
+      const b = document.createElement('canvas'); b.width = texW; b.height = texH
       const ctx = c.getContext('2d')!; const btx = b.getContext('2d')!
 
       const grad = ctx.createLinearGradient(0, 0, 512, 0)
@@ -295,8 +304,10 @@ export default function HauntedHouse({ isActive = true }: { isActive?: boolean }
     // Light source
     const lampLight = new THREE.PointLight(0xffcc77, 16, 15) // Much brighter, slightly wider cast
     lampLight.position.set(0, -0.2, 0)
-    lampLight.castShadow = true
+    lampLight.castShadow = perf.tier !== 'low' // Disable some shadows on low tier
     lampLight.shadow.bias = -0.001
+    lampLight.shadow.mapSize.width = perf.shadowMapSize
+    lampLight.shadow.mapSize.height = perf.shadowMapSize
     lampGroup.add(lampLight)
 
     scene.add(lampGroup)
@@ -340,8 +351,8 @@ export default function HauntedHouse({ isActive = true }: { isActive?: boolean }
     // Main Moonlight (Directional + Shadows)
     const moon = new THREE.DirectionalLight(0x5566aa, 1.5)
     moon.position.set(-6, 12, 10)
-    moon.castShadow = true
-    moon.shadow.mapSize.width = 1024; moon.shadow.mapSize.height = 1024
+    moon.castShadow = perf.shadows
+    moon.shadow.mapSize.width = perf.shadowMapSize; moon.shadow.mapSize.height = perf.shadowMapSize
     moon.shadow.camera.near = 0.5; moon.shadow.camera.far = 30
     moon.shadow.bias = -0.001
     scene.add(moon)
@@ -363,7 +374,7 @@ export default function HauntedHouse({ isActive = true }: { isActive?: boolean }
     scene.add(doorGlowL)
 
     // ── PARTICLES (DUST/MAGIC) ───────────────────────────────────────────
-    const pCount = isMobile ? 150 : 400
+    const pCount = Math.floor((isMobile ? 150 : 400) * perf.particlesScale)
     const pGeo = new THREE.BufferGeometry()
     const pPos = new Float32Array(pCount * 3)
     for (let i = 0; i < pCount; i++) {

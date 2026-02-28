@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
+import { usePerformance } from '@/lib/usePerformance'
 
 const HauntedHouse = dynamic(() => import('@/components/HauntedHouse'), {
   ssr: false,
@@ -46,6 +47,7 @@ function LoadingScreen({ text }: { text: string }) {
 export default function Home() {
   const [scrollProgress, setScrollProgress] = useState(0)
   const [currentRoom, setCurrentRoom] = useState<'house' | 'education' | 'experience' | 'skills' | 'works'>('house')
+  const perf = usePerformance()
 
   useEffect(() => {
     let virtualScroll = window.scrollY
@@ -129,7 +131,7 @@ export default function Home() {
                 opacity: exteriorOpacity,
                 transform: `scale(${exteriorScale})`,
                 transformOrigin: '50% 60%',
-                filter: `blur(${scrollProgress * 20}px)`,
+                filter: `blur(${scrollProgress * (perf.tier === 'high' ? 20 : perf.tier === 'medium' ? 10 : 4)}px)`,
                 zIndex: scrollProgress < 0.5 ? 20 : 10,
                 pointerEvents: scrollProgress < 0.4 ? 'auto' : 'none'
               }}

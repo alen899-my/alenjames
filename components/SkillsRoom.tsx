@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
+import { usePerformance } from '@/lib/usePerformance'
 
 // ── SKILL DATA ────────────────────────────────────────────────────────────────
 interface Skill {
@@ -40,8 +41,10 @@ const SKILLS: Skill[] = [
 ]
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
-const makeCategoryPlaque = (title: string) => {
-    const c = document.createElement('canvas'); c.width = 1024; c.height = 256
+const makeCategoryPlaque = (title: string, textureScale: number) => {
+    const texW = 1024 * textureScale
+    const texH = 256 * textureScale
+    const c = document.createElement('canvas'); c.width = texW; c.height = texH
     const ctx = c.getContext('2d')!
     ctx.fillStyle = 'rgba(20, 15, 10, 0.95)'; ctx.fillRect(0, 0, 1024, 256)
 
@@ -62,8 +65,8 @@ function hexToRgb(hex: string) {
     return { r: parseInt(c.slice(0, 2), 16) || 0, g: parseInt(c.slice(2, 4), 16) || 0, b: parseInt(c.slice(4, 6), 16) || 0 }
 }
 
-function makeFallbackFace(skill: Skill): THREE.CanvasTexture {
-    const S = 256
+function makeFallbackFace(skill: Skill, textureScale: number): THREE.CanvasTexture {
+    const S = 256 * textureScale
     const cv = document.createElement('canvas'); cv.width = S; cv.height = S
     const ctx = cv.getContext('2d')!
     const { r, g, b } = hexToRgb(skill.color)
@@ -88,13 +91,13 @@ function makeFallbackFace(skill: Skill): THREE.CanvasTexture {
     return new THREE.CanvasTexture(cv)
 }
 
-function loadImageFace(skill: Skill): Promise<THREE.Texture> {
+function loadImageFace(skill: Skill, textureScale: number): Promise<THREE.Texture> {
     return new Promise((resolve) => {
         const loader = new THREE.TextureLoader()
         loader.load(
             `/skills/${skill.imageFile}`,
             (tex) => {
-                const S = 512
+                const S = 512 * textureScale
                 const cv = document.createElement('canvas'); cv.width = S; cv.height = S
                 const ctx = cv.getContext('2d')!
                 const { r, g, b } = hexToRgb(skill.color)
@@ -113,7 +116,7 @@ function loadImageFace(skill: Skill): Promise<THREE.Texture> {
                 resolve(new THREE.CanvasTexture(cv))
             },
             undefined,
-            () => resolve(makeFallbackFace(skill))
+            () => resolve(makeFallbackFace(skill, textureScale))
         )
     })
 }
@@ -173,8 +176,8 @@ function makeNamePlaque(skill: Skill, selected: boolean): THREE.CanvasTexture {
     return new THREE.CanvasTexture(cv)
 }
 
-function makeDetailPanel(skill: Skill): THREE.CanvasTexture {
-    const W = 1024, H = 512
+function makeDetailPanel(skill: Skill, textureScale: number): THREE.CanvasTexture {
+    const W = 1024 * textureScale, H = 512 * textureScale
     const cv = document.createElement('canvas'); cv.width = W; cv.height = H
     const ctx = cv.getContext('2d')!
     const { r, g, b } = hexToRgb(skill.color)
@@ -305,6 +308,7 @@ export default function SkillsRoom({ isActive = true }: { isActive?: boolean }) 
         setShelf?: (idx: number) => void;
         updateActive?: (active: boolean) => void
     }>({})
+    const perf = usePerformance()
 
     useEffect(() => { isActiveRef.current = isActive; sceneRef.current.updateActive?.(isActive) }, [isActive])
 
@@ -315,11 +319,14 @@ export default function SkillsRoom({ isActive = true }: { isActive?: boolean }) 
         const catNames = ['Frontend', 'Backend', 'Other Skills', 'Coding Languages']
 
         // RENDERER
-        const renderer = new THREE.WebGLRenderer({ antialias: true })
+        const renderer = new THREE.WebGLRenderer({
+            antialias: perf.tier === 'high',
+            powerPreference: 'high-performance'
+        })
         renderer.setSize(W, H)
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-        renderer.shadowMap.enabled = true
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap
+        renderer.setPixelRatio(perf.pixelRatio)
+        renderer.shadowMap.enabled = perf.shadows
+        renderer.shadowMap.type = perf.tier === 'high' ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap
         renderer.toneMapping = THREE.ACESFilmicToneMapping
         renderer.toneMappingExposure = 1.18
         mount.appendChild(renderer.domElement)
@@ -429,7 +436,7 @@ export default function SkillsRoom({ isActive = true }: { isActive?: boolean }) 
             shelfAnchor.add(crown2)
 
             // Category Label Plaque
-            const catTex = makeCategoryPlaque(catNames[sIdx])
+            const catTex = makeCategoryPlaque(catNames[sIdx], perf.textureScale)
             const catMat = new THREE.MeshStandardMaterial({ map: catTex, roughness: 0.2, metalness: 0.1, emissive: new THREE.Color(0x332211), emissiveIntensity: 0.5 })
             const catPlaq = new THREE.Mesh(new THREE.PlaneGeometry(6.5, 1.6), catMat)
             catPlaq.position.set(0, BC_Y_BASE + BC_H + 0.85, SHELF_D / 2 + 0.16)
@@ -478,12 +485,12 @@ export default function SkillsRoom({ isActive = true }: { isActive?: boolean }) 
                 const CS = CUBE_SIZE
                 const cubeBody = new THREE.Mesh(new THREE.BoxGeometry(CS, CS, CS), new THREE.MeshStandardMaterial({ map: woodSideTex, roughness: 0.62, metalness: 0.02, color: 0x8a5420 }))
                 grp.add(cubeBody)
-                const fallbackTex = makeFallbackFace(sk)
+                const fallbackTex = makeFallbackFace(sk, perf.textureScale)
                 const frontMat = new THREE.MeshStandardMaterial({ map: fallbackTex, roughness: 0.22, metalness: 0.04, emissive: new THREE.Color(0.02, 0.02, 0.04), emissiveIntensity: 0.4 })
                 cubeFrontMats[idx] = frontMat
                 const frontPlane = new THREE.Mesh(new THREE.PlaneGeometry(CS * 0.90, CS * 0.90), frontMat)
                 frontPlane.position.set(0, 0, CS / 2 + 0.003); frontPlane.userData = { cubeIdx: idx, shelfIdx: sIdx }; grp.add(frontPlane); cubeMeshes.push(frontPlane)
-                loadImageFace(sk).then(tex => { if (cubeFrontMats[idx]) { cubeFrontMats[idx].map?.dispose(); cubeFrontMats[idx].map = tex; cubeFrontMats[idx].needsUpdate = true } })
+                loadImageFace(sk, perf.textureScale).then(tex => { if (cubeFrontMats[idx]) { cubeFrontMats[idx].map?.dispose(); cubeFrontMats[idx].map = tex; cubeFrontMats[idx].needsUpdate = true } })
                 const al = new THREE.PointLight(new THREE.Color(r / 255, g / 255, b / 255), 0, 3, 2)
                 al.position.set(0, 0, 0); grp.add(al); accentLights[idx] = al
                 const pm = new THREE.MeshStandardMaterial({ map: makeNamePlaque(sk, false), roughness: 0.55 })
@@ -523,7 +530,7 @@ export default function SkillsRoom({ isActive = true }: { isActive?: boolean }) 
                 })
         }
 
-        const detailTex = makeDetailPanel(SKILLS[0])
+        const detailTex = makeDetailPanel(SKILLS[0], perf.textureScale)
         const panelMat = new THREE.MeshStandardMaterial({
             map: detailTex, roughness: 0.15,
             emissive: new THREE.Color(0.04, 0.04, 0.07), emissiveIntensity: 0.38,
@@ -565,7 +572,10 @@ export default function SkillsRoom({ isActive = true }: { isActive?: boolean }) 
         const pendant = new THREE.Mesh(new THREE.SphereGeometry(0.10, 10, 10), ironMat)
         pendant.position.set(0, CHAN_Y - 1.48, 0); scene.add(pendant)
         const chanLight = new THREE.PointLight(0xffcc66, 90, 40, 1.4)
-        chanLight.position.set(0, RH - 1.3, 0); chanLight.castShadow = true; scene.add(chanLight)
+        chanLight.position.set(0, RH - 1.3, 0);
+        chanLight.castShadow = perf.shadows;
+        chanLight.shadow.mapSize.set(perf.shadowMapSize, perf.shadowMapSize);
+        scene.add(chanLight)
 
         const panelSpot = new THREE.SpotLight(0xfff5e0, 58, 20, Math.PI / 7, 0.28, 1.1)
         panelSpot.position.set(0, RH - 0.45, PANEL_Z + 4.5); panelSpot.target = panelMesh; scene.add(panelSpot)
@@ -601,7 +611,7 @@ export default function SkillsRoom({ isActive = true }: { isActive?: boolean }) 
         rug.rotation.x = -Math.PI / 2; rug.position.set(0, 0.005, 3.5); scene.add(rug)
 
         // Dust
-        const PC = 220, pGeo = new THREE.BufferGeometry()
+        const PC = Math.floor((perf.isMobile ? 220 : 400) * perf.particlesScale), pGeo = new THREE.BufferGeometry()
         const pArr = new Float32Array(PC * 3)
         for (let i = 0; i < PC; i++) { pArr[i * 3] = (Math.random() - 0.5) * RW * .85; pArr[i * 3 + 1] = Math.random() * RH; pArr[i * 3 + 2] = (Math.random() - 0.5) * RD * .85 }
         pGeo.setAttribute('position', new THREE.BufferAttribute(pArr, 3))
@@ -659,7 +669,7 @@ export default function SkillsRoom({ isActive = true }: { isActive?: boolean }) 
 
             // Panel update removed or logic changed? Wait, I need panel update
             panelMat.map?.dispose()
-            panelMat.map = makeDetailPanel(SKILLS[idx])
+            panelMat.map = makeDetailPanel(SKILLS[idx], perf.textureScale)
             panelMat.map.needsUpdate = true; panelMat.needsUpdate = true
 
             const { r, g, b } = hexToRgb(SKILLS[idx].color)
