@@ -404,12 +404,25 @@ export default function HauntedHouse({ isActive = true }: { isActive?: boolean }
       mount.style.cursor = isHover ? 'pointer' : 'default'
     }
 
+    let lastTapTime = 0
     const onClick = () => {
       raycaster.setFromCamera(mouse, camera)
-      if (raycaster.intersectObject(doorPanel).length > 0 && !animatingRef.current) {
+      const hits = raycaster.intersectObject(doorPanel)
+      const inDoor = hits.length > 0
+
+      const now = Date.now()
+      const isDouble = now - lastTapTime < 350
+      lastTapTime = now
+
+      if (inDoor && !animatingRef.current) {
         animatingRef.current = true
         isDoorOpenRef.current = !isDoorOpenRef.current
         setDoorOpen(isDoorOpenRef.current)
+      }
+
+      // Mobile Quick Entry: Double tap anywhere (or on door) to enter
+      if (isDouble && isMobile) {
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })
       }
     }
 

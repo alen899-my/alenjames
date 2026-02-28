@@ -18,7 +18,7 @@ interface DoorState {
 
 type ClickTarget = {
     mesh: THREE.Mesh
-    action: 'door' | 'panel'
+    action: 'door' | 'panel' | 'floor'
     doorIndex?: number
     panel?: PanelType
     teleportKey?: string
@@ -343,9 +343,13 @@ export default function InsideHouse({ isActive = true }: { isActive?: boolean })
             m.position.set(x, y, z); m.rotation.y = ry; m.castShadow = true; m.receiveShadow = true; scene.add(m); return m
         }
 
+        const doorStates: DoorState[] = []
+        const clickTargets: ClickTarget[] = []
+
         // Floor / Ceiling / Walls
         const fl = new THREE.Mesh(new THREE.PlaneGeometry(RW, roomLen), floorMat)
         fl.rotation.x = -Math.PI / 2; fl.position.set(0, 0, floorMid); fl.receiveShadow = true; scene.add(fl)
+        clickTargets.push({ mesh: fl, action: 'floor' })
         const ce = new THREE.Mesh(new THREE.PlaneGeometry(RW, roomLen), ceilMat)
         ce.rotation.x = Math.PI / 2; ce.position.set(0, RH, floorMid); scene.add(ce)
         const bw = new THREE.Mesh(new THREE.PlaneGeometry(RW, RH), wallMat)
@@ -372,8 +376,7 @@ export default function InsideHouse({ isActive = true }: { isActive?: boolean })
         const FW = 0.25  // frame piece width
         const VD = 0.5   // void depth behind wall
 
-        const doorStates: DoorState[] = []
-        const clickTargets: ClickTarget[] = []
+        // (moved up)
 
         /**
          * Build a door in a wall.
@@ -680,6 +683,7 @@ export default function InsideHouse({ isActive = true }: { isActive?: boolean })
             const sz = StSZ - i * SRN, sy = i * SR
             const tread = new THREE.Mesh(new THREE.BoxGeometry(StW, 0.09, SRN + 0.04), stepMat)
             tread.position.set(RX - StW / 2, sy + 0.045, sz - SRN / 2); tread.castShadow = true; tread.receiveShadow = true; scene.add(tread)
+            clickTargets.push({ mesh: tread, action: 'floor' })
             const riser = new THREE.Mesh(new THREE.BoxGeometry(StW, SR, 0.055),
                 new THREE.MeshStandardMaterial({ color: 0x0e0802, roughness: 0.95 }))
             riser.position.set(RX - StW / 2, sy + SR / 2, sz - SRN + 0.028); scene.add(riser)
@@ -804,12 +808,22 @@ export default function InsideHouse({ isActive = true }: { isActive?: boolean })
             return clickTargets.find(t => t.mesh === hits[0].object) ?? null
         }
 
-        const handleTarget = (target: ClickTarget, isDouble: boolean) => {
+        const handleTarget = (target: ClickTarget, isDouble: boolean, point?: THREE.Vector3) => {
             if (target.action === 'door') {
                 const ds = doorStates[target.doorIndex!]
-                // Clicking only toggles the door now. Door must be open for walking in.
-                ds.isOpen = !ds.isOpen
-                ds.targetAngle = ds.isOpen ? ds.openAngle : ds.closeAngle
+                // Double tap on mobile enters room immediately
+                if (isDouble && isMobile && ds.isOpen) {
+                    window.dispatchEvent(new CustomEvent('enter-room', { detail: { room: target.panel } }))
+                } else {
+                    ds.isOpen = !ds.isOpen
+                    ds.targetAngle = ds.isOpen ? ds.openAngle : ds.closeAngle
+                }
+            } else if (target.action === 'floor') {
+                if (isDouble && isMobile && point) {
+                    // Teleport glide
+                    camPos.x = Math.max(LX + 0.6, Math.min(RX - 0.6, point.x))
+                    camPos.z = Math.max(ZFAR + 1.3, Math.min(ZNEAR - 0.5, point.z))
+                }
             } else {
                 // panel target (portrait, hanging sign)
                 if (isDouble && target.panel) {
@@ -847,12 +861,18 @@ export default function InsideHouse({ isActive = true }: { isActive?: boolean })
         const onClick = (e: MouseEvent) => {
             if (Date.now() - lastDragTime < 130) return
             const ndc = getNDC(e.clientX, e.clientY)
-            const target = getTarget(ndc)
+            raycaster.setFromCamera(ndc, camera)
+            const hits = raycaster.intersectObjects(clickTargets.map(t => t.mesh), true)
+            if (!hits.length) return
+
+            const hit = hits[0]
+            const target = clickTargets.find(t => t.mesh === hit.object)
             if (!target) return
+
             const now = Date.now()
             const isDouble = (now - lastTapTime < 380) && lastTapTarget === target
             lastTapTime = now; lastTapTarget = target
-            handleTarget(target, isDouble)
+            handleTarget(target, isDouble, hit.point)
         }
 
         mount.style.touchAction = 'none'
